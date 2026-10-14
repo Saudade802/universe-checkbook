@@ -1,60 +1,77 @@
 # 宇宙无限银行 · 财富显化支票
 
-按照参考支票图片制作的网页，支持填写、提交和下载专属支票。
+可部署到 Vercel 的 Next.js 网页，提供支票填写、实时预览、登录和图片下载。
 
 ## 功能
 
-- 可编辑日期、收款人、金额、用于/目标、填写人，实时预览。
-- 使用 ChatGPT 账号登录，每个账号有 50 次提交机会。
-- 成功或错误提交都扣除一次，服务器保存次数，刷新或换设备不会重置。
-- 网络重试不会重复扣次，并发提交也不能突破 50 次限制。
-- 五项信息通过校验后，下载 PNG 或 JPG，尺寸为 2990 × 2178。
-- 修改已生成的内容需要重新提交；次数用完后仍可下载最近成功支票。
-- 支票数据按账户隔离，匿名访问可以查看页面。
+- 五项必填：日期、收款人、金额、用于/目标、填写人。
+- 邮箱注册和登录，每个账号独立保存填写次数。
+- 每位用户共 50 次提交机会；填错或未填完整的提交也计次。
+- Supabase 数据库事务和账号行锁保证并发请求不会超过 50 次。
+- 同一请求的网络重试不重复扣次。
+- 成功提交后下载 PNG / JPG，尺寸 2990 × 2178。
+- 修改已生成的内容需要重新提交；次数用完后仍能下载最近一次成功支票。
+- 数据库行级权限保证填写内容只有对应账号可以读取。
 
-## 技术
+## Vercel 部署
 
-React 19、TypeScript、Vinext / Vite、Cloudflare Workers、Cloudflare D1、Drizzle。
+导入本仓库，选择 **Next.js**，项目根目录为仓库根目录。
 
-## 本地开发
+- Install Command：`npm ci`
+- Build Command：`npm run build`
+- Output Directory：使用 Next.js 默认值，不要填 `dist`。
+- Node.js：22.x 或更新的受支持版本。
+
+`vercel.json` 已声明框架和构建命令。原有 Cloudflare/Vinext 构建已切换为标准 Next.js 构建。
+
+### 数据库与登录
+
+使用 Supabase Auth 和 PostgreSQL。`supabase/public-config.json` 包含已连接项目的公开 URL 和 publishable key；这些是面向客户端公开的连接信息，不是 service-role 密钥。
+
+对应数据库迁移为 `supabase/migrations/202610140001_manifestation_checkbook.sql`，已应用到关联 Supabase 项目。复用该项目时不需要重复运行迁移。
+
+如果换成自己的 Supabase 项目，在 SQL Editor 运行迁移，并在 Vercel 中配置：
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=https://你的项目.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=你的publishable-key
+```
+
+环境变量会覆盖公开连接文件。不要在这些变量中使用 service-role 或 secret key。
+
+在 Supabase 的 Authentication → URL Configuration 中把 Site URL 设为正式网站地址，并允许 `https://正式网站地址/auth/confirm`。注册需要确认邮箱，之后可以回到网站使用邮箱和密码登录。默认邮件模板可用，也支持自定义 token-hash 确认模板。
+
+GitHub 提交后 Vercel 会自动构建；也可以在 Deployments 中手动 Redeploy 最新提交。
+
+## 本地运行
 
 需要 Node.js 22.13 或更新版本。
 
 ```sh
 npm ci
-npm run build
-```
-
-应用本地数据库迁移：
-
-```sh
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_optimal_devos.sql
 npm run dev
 ```
 
-本地登录仅为开发测试身份，生产登录由 Sites 平台提供。
+打开 `http://127.0.0.1:3000`。
 
-## 检查
+如果只想本地检查界面和下载，在 `.env.local` 写入 `CHECKBOOK_LOCAL_PREVIEW=1`，登录页会出现“本地预览登录”。它使用独立本地测试数据库，只在开发环境启用，生产环境及 Vercel 均不能使用该测试登录。
+
+## 验证
 
 ```sh
-npx tsc --noEmit
-node --experimental-strip-types --test tests/checks.test.mjs
+npm test
+npm run build
 ```
 
-已通过 TypeScript 检查、生产构建、字段校验和 50 次计数测试，以及真实接口处理器的账户隔离、重试去重和并发上限测试。完整浏览器下载验证尚未完成。
+`tests/supabase-quota.sql` 可以在关联 Supabase 的 SQL Editor 运行数据库权限与计数检查，测试数据在结束时回滚。
 
-## 部署
+## 主要文件
 
-此项目需要支持服务器运行和 D1 数据库的托管平台，不能仅通过 GitHub Pages 运行。
+- `app/checkbook.tsx`：填写界面、实时预览、图片导出。
+- `app/api/checks/route.ts`：提交与个人次数接口。
+- `app/auth/`、`app/api/auth/`：邮箱注册、登录、确认及退出。
+- `proxy.ts`：刷新和验证 Supabase 登录会话。
+- `supabase/migrations/`：50 次限制、事务锁、去重与账号隔离。
+- `public/check-template.jpg`：用户提供的原始支票图片。
 
-Sites 项目配置在 `.openai/hosting.json`，已有项目应复用其中的 `project_id`。发布时应用 `drizzle/` 中的数据库迁移。GitHub 仓库用于保存源码；网站托管需要另行部署。
-
-## 文件
-
-- `app/checkbook.tsx`：表单、实时预览和图片导出。
-- `app/api/checks/route.ts`：登录校验、提交与次数查询。
-- `lib/checks.ts`：字段校验与计数 SQL。
-- `db/schema.ts`、`drizzle/`：数据库结构与迁移。
-- `public/check-template.jpg`：用户提供的支票底图。
-
-金额按人民币填写，最多 15 位整数及 2 位小数；收款人和填写人最多 30 个字，目标最多 80 个字。
+金额按人民币填写，最多 15 位整数和 2 位小数；收款人和填写人最多 30 个字，目标最多 80 个字。

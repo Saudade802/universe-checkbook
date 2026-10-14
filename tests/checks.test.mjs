@@ -3,8 +3,18 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { INSERT_ATTEMPT, validateFields, displayAmount } from '../lib/checks.ts';
+import { isSameOrigin } from '../lib/request-security.ts';
 
 const complete = { date: '2026-10-14', payee: '小雨', amount: '1000000.50', goal: '创造理想生活', author: '小雨' };
+test('origin checks support Next.js and Vercel forwarded hosts and reject cross-site requests', () => {
+  const request = headers => new Request('http://localhost:3000/api/checks', { headers });
+  assert.equal(isSameOrigin(request({ origin: 'http://127.0.0.1:3000', host: '127.0.0.1:3000' })), true);
+  const forwarded = { host: 'internal:3000', 'x-forwarded-host': 'checks.example.com', 'x-forwarded-proto': 'https' };
+  assert.equal(isSameOrigin(request({ ...forwarded, origin: 'https://checks.example.com' })), true);
+  assert.equal(isSameOrigin(request({ ...forwarded, origin: 'https://other.example.com' })), false);
+  assert.equal(isSameOrigin(request({ ...forwarded, origin: 'https://checks.example.com', 'sec-fetch-site': 'cross-site' })), false);
+  assert.equal(isSameOrigin(request({ ...forwarded, origin: 'null' })), false);
+});
 test('all five fields required; real dates and positive exact decimal amounts', () => {
   assert.deepEqual(validateFields(complete).errors, {});
   for (const key of Object.keys(complete)) assert.ok(validateFields({ ...complete, [key]: '  ' }).errors[key]);

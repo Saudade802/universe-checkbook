@@ -164,7 +164,7 @@ export default function Checkbook({ user, signInPath, signOutPath }: { user: { i
 
   return <div className="site-shell">
     <header className="site-header"><a className="brand" href="/" aria-label="宇宙无限银行首页"><span className="brand-mark"><Orbit size={28} strokeWidth={1.3} /></span><span>宇宙无限银行<small>BANK OF THE UNIVERSE</small></span></a>
-      {user ? <div className="account"><span className="account-name" title={user.name}>{user.name}</span><a href={signOutPath} target="_top" className="quiet-link"><LogOut size={15} /><span>退出</span></a></div> : <a href={signInPath} target="_top" className="login-link">登录我的账户 <ArrowRight size={16} /></a>}
+      {user ? <div className="account"><span className="account-name" title={user.name}>{user.name}</span><form action={signOutPath} method="post"><button type="submit" className="quiet-link sign-out" aria-label="退出登录"><LogOut size={15} /><span>退出</span></button></form></div> : <a href={signInPath} target="_top" className="login-link">登录我的账户 <ArrowRight size={16} /></a>}
     </header>
     <main>
       <section className="intro"><div className="eyebrow"><span /> MANIFESTATION CHECKBOOK</div><h1>把心中所愿，<span>写成一张支票。</span></h1><p>给愿望一个清晰的模样，也给未来的自己一份期许。</p></section>
@@ -172,7 +172,7 @@ export default function Checkbook({ user, signInPath, signOutPath }: { user: { i
       <div className="workspace">
         <section className="form-panel" aria-labelledby="form-title"><div className="panel-heading"><div><h2 id="form-title">写下你的愿望</h2><p>每一项，都让愿望更具体一点。</p></div><span className="completion">{filled}<i>/ 5</i></span></div>
           <div className={`quota${remaining === 0 ? " exhausted" : ""}`}><div><span>我的填写机会</span><strong>{user ? (remaining === null ? "—" : remaining) : "50"}<small> / 50 次</small></strong></div><div className="quota-track"><span style={{ width: `${remaining === null ? 100 : remaining * 2}%` }} /></div><p>{!user ? "登录后领取，每个账号独立计数" : loading ? "正在读取账户次数…" : `已提交 ${used ?? "—"} 次 · 次数不会随刷新重置`}</p></div>
-          {!user && <a href={signInPath} target="_top" className="sign-in-banner"><LockKeyhole size={17} /><span>登录后开始填写<small>使用 ChatGPT 账号登录</small></span><ArrowRight size={16} /></a>}
+          {!user && <a href={signInPath} target="_top" className="sign-in-banner"><LockKeyhole size={17} /><span>登录后开始填写<small>每个账号独立保存填写次数</small></span><ArrowRight size={16} /></a>}
           <form onSubmit={submit} noValidate>
             {field("date", "日期", "Date", "请选择日期")}
             {field("payee", "收款人", "Pay to", "这份丰盛，属于谁？", 30)}
