@@ -11,8 +11,13 @@
 
 /* Mobile uses separate fill and download screens; desktop keeps the live preview. */
 .preview-bottom .text-button.new-check-button{font-size:16px;font-weight:600;color:var(--green);min-height:44px;padding:4px 8px;gap:8px}
+.desktop-new-check{display:flex;width:100%;min-height:48px;margin-top:16px;padding:10px 14px;gap:10px;border:1px solid #9bac8b;border-radius:6px;background:#edf2e7;color:var(--green);font-size:16px;font-weight:600}
+.desktop-new-check:hover{background:#e3edd9;border-color:#789273}
+.preview-bottom .mobile-new-check{display:none}
 .mobile-result-intro,.mobile-page-steps,.mobile-continue,.mobile-result-feedback{display:none}
 @media(max-width:800px){
+  .desktop-new-check{display:none}
+  .preview-bottom .mobile-new-check{display:inline-flex}
   .workspace-top{display:none}
   .mobile-page-steps{display:flex;align-items:center;justify-content:center;gap:16px;margin:0 0 20px;color:#a0a88f;font-size:12px}
   .mobile-page-steps .current{color:var(--green);font-weight:600}

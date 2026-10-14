@@ -214,13 +214,14 @@ export default function Checkbook() {
             {latest && !accepted && !busy && !pending && <button type="button" className="primary-button mobile-continue" onClick={() => { setFields(latest.fields); setErrors({}); setMessage(""); navigateMobile("download"); }}>查看最近成功支票 <ArrowRight size={17} /></button>}
           </form>
           {message && <div className={`feedback ${kind}`} role={kind === "error" ? "alert" : "status"}>{message}{used === null && !loading && <button className="text-button" onClick={() => void loadStatus()}>重新读取</button>}</div>}
+          {accepted && remaining !== 0 && <button type="button" className="desktop-new-check" onClick={startNewCheck}><RotateCcw size={18} /> 再填写一张</button>}
         </section>
         <section className="preview-panel" aria-labelledby="preview-title">
           {mobilePage === "download" && message && <div className={`feedback mobile-result-feedback ${kind}`} role={kind === "error" ? "alert" : "status"}>{message}</div>}
           <div className="preview-heading"><div><span className="live-dot" /><h2 id="preview-title">你的专属支票</h2><span className="preview-label">实时预览</span></div><button type="button" className="icon-button" onClick={() => setZoom(true)} aria-label="放大查看支票"><ZoomIn size={17} /></button></div>
           <div className="paper-stage"><CheckPreview fields={fields} /><div className="paper-caption"><span /><Sparkles size={13} /><span>先相信，再看见</span><span /></div></div>
           <div className="download-panel"><span className={`download-icon${accepted ? " ready" : ""}`}>{accepted ? <Check size={23} /> : <FileImage size={23} strokeWidth={1.4} />}</span><div className="download-copy"><h3>{accepted ? "愿望已落笔，珍藏这一刻" : "将你的愿望，珍藏成一张图片"}</h3><p>{accepted ? "2990 × 2178 高清图片 · 重复下载不扣次数" : "填完整全部5项信息，提交成功后即可下载"}</p></div><div className="download-buttons"><button onClick={() => void exportImage("png")} disabled={!accepted || exporting}><ArrowDownToLine size={15} /> PNG</button><button onClick={() => void exportImage("jpg")} disabled={!accepted || exporting}><ArrowDownToLine size={15} /> JPG</button></div></div>
-          <div className="preview-bottom"><span>{accepted ? "已保存至当前浏览器" : "预览中的编辑尚未提交"}</span><div>{latest && !accepted && !busy && !pending && <button className="text-button" onClick={() => { setFields(latest.fields); setErrors({}); setMessage(""); }}>查看最近成功支票</button>}{accepted && remaining !== 0 && <button className="text-button new-check-button" onClick={startNewCheck}><RotateCcw size={18} /> 再填写一张</button>}</div></div>
+          <div className="preview-bottom"><span>{accepted ? "已保存至当前浏览器" : "预览中的编辑尚未提交"}</span><div>{latest && !accepted && !busy && !pending && <button className="text-button" onClick={() => { setFields(latest.fields); setErrors({}); setMessage(""); }}>查看最近成功支票</button>}{accepted && remaining !== 0 && <button className="text-button new-check-button mobile-new-check" onClick={startNewCheck}><RotateCcw size={18} /> 再填写一张</button>}</div></div>
           <div className="gentle-note"><span>✦</span><p>愿你带着感恩与笃定，<br className="mobile-only" />走向心中丰盛的生活。</p></div>
         </section>
       </div>
