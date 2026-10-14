@@ -211,6 +211,7 @@ export default function Checkbook() {
             <p className="submit-note"><CircleHelp size={14} /><span>每次提交均扣除1次，填写错误也计入。<br />请检查后再提交。更换浏览器或清除网站数据会重新计数。</span></p>
             <button className="primary-button" type="submit" disabled={busy || loading || used === null || (!pending && (remaining === 0 || accepted))}>{busy ? "正在确认提交…" : pending ? "重试上次提交" : accepted ? <><CheckCheck size={17} /> 支票已成功生成</> : remaining === 0 ? "50次填写机会已用完" : <>提交并生成支票 <ArrowRight size={17} /></>}</button>
             {accepted && <button type="button" className="primary-button mobile-continue" onClick={() => navigateMobile("download")}>查看并下载支票 <ArrowRight size={17} /></button>}
+            {latest && !accepted && !busy && !pending && <button type="button" className="primary-button mobile-continue" onClick={() => { setFields(latest.fields); setErrors({}); setMessage(""); navigateMobile("download"); }}>查看最近成功支票 <ArrowRight size={17} /></button>}
           </form>
           {message && <div className={`feedback ${kind}`} role={kind === "error" ? "alert" : "status"}>{message}{used === null && !loading && <button className="text-button" onClick={() => void loadStatus()}>重新读取</button>}</div>}
         </section>
