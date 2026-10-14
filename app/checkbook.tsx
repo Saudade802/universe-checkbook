@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowDownToLine, ArrowRight, Check, CheckCheck, ChevronRight, CircleHelp, FileImage, Orbit, RotateCcw, ShieldCheck, Sparkles, X, ZoomIn } from "lucide-react";
+import { ArrowDownToLine, ArrowLeft, ArrowRight, Check, CheckCheck, ChevronRight, CircleHelp, FileImage, Orbit, RotateCcw, ShieldCheck, Sparkles, X, ZoomIn } from "lucide-react";
 import { displayAmount, displayDate, emptyFields, LIMIT, type FieldErrors, type Fields, type SavedCheck } from "../lib/checks";
 
 import { readBrowserStatus, submitBrowserCheck } from "../lib/browser-checks";
@@ -79,6 +79,7 @@ export default function Checkbook() {
   const [kind, setKind] = useState("info");
   const [exporting, setExporting] = useState(false);
   const [zoom, setZoom] = useState(false);
+  const [mobilePage, setMobilePage] = useState<"fill" | "download">("fill");
   const sending = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const storageKey = "universe-guest-pending-v1";
@@ -105,6 +106,28 @@ export default function Checkbook() {
   }, []);
 
   useEffect(() => { void loadStatus(); }, [loadStatus]);
+  useEffect(() => {
+    if (loading) return;
+    const syncPage = () => setMobilePage(window.location.hash === "#download" && accepted ? "download" : "fill");
+    syncPage();
+    window.addEventListener("hashchange", syncPage);
+    return () => window.removeEventListener("hashchange", syncPage);
+  }, [loading, accepted]);
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 800px)").matches) return;
+    window.scrollTo({ top: 0, behavior: "instant" });
+    if (mobilePage === "download") document.getElementById("mobile-result-title")?.focus({ preventScroll: true });
+  }, [mobilePage]);
+
+  function navigateMobile(page: "fill" | "download") {
+    setMobilePage(page);
+    window.location.hash = page === "download" ? "download" : "fill";
+  }
+
+  function startNewCheck() {
+    setFields({ ...emptyFields }); setErrors({}); setMessage("");
+    if (window.matchMedia("(max-width: 800px)").matches) navigateMobile("fill");
+  }
   useEffect(() => {
     const refresh = () => {
       if (!sending.current) void readBrowserStatus().then(data => setUsed(data.used)).catch(() => {});
@@ -133,7 +156,10 @@ export default function Checkbook() {
       const result = await submitBrowserCheck(attempt);
       setUsed(result.used); setErrors(result.errors || {}); setMessage(result.message);
       setKind(result.success ? "success" : "error");
-      if (result.check) { setLatest(result.check); setFields(result.check.fields); }
+      if (result.check) {
+        setLatest(result.check); setFields(result.check.fields);
+        if (window.matchMedia("(max-width: 800px)").matches) navigateMobile("download");
+      }
       setPending(null);
       try { sessionStorage.removeItem(storageKey); } catch { /* Optional storage. */ }
       if (result.errors) {
@@ -163,12 +189,14 @@ export default function Checkbook() {
     {errors[key] ? <span id={`${key}-error`} className="field-error">{errors[key]}</span> : key === "goal" ? <span className="char-count">{[...fields.goal].length} / 80</span> : null}
   </div>;
 
-  return <div className="site-shell">
+  return <div className={`site-shell mobile-page-${mobilePage}`}>
     <header className="site-header"><a className="brand" href="/" aria-label="宇宙无限银行首页"><span className="brand-mark"><Orbit size={28} strokeWidth={1.3} /></span><span>宇宙无限银行<small>BANK OF THE UNIVERSE</small></span></a>
       <span className="private-note"><ShieldCheck size={14} /> 无需登录 · 直接填写</span>
     </header>
     <main>
       <section className="intro"><div className="eyebrow"><span /> MANIFESTATION CHECKBOOK</div><h1>把心中所愿，<span>写成一张支票。</span></h1><p>给愿望一个清晰的模样，也给未来的自己一份期许。</p></section>
+      <div className="mobile-result-intro"><button type="button" className="text-button" onClick={() => navigateMobile("fill")}><ArrowLeft size={15} /> 返回修改信息</button><h1 id="mobile-result-title" tabIndex={-1}>你的愿望，已成为一张支票。</h1><p>选择图片格式，下载并珍藏这一刻。</p></div>
+      <div className="mobile-page-steps" aria-label="制作步骤"><span className={mobilePage === "fill" ? "current" : ""}>01 填写信息</span><ChevronRight size={14} /><span className={mobilePage === "download" ? "current" : ""}>02 支票与下载</span></div>
       <div className="workspace-top"><nav className="steps" aria-label="制作步骤"><span className={!accepted ? "current" : "done"}><b>{accepted ? <Check size={12} /> : "01"}</b>填写支票</span><ChevronRight size={14} /><span className={accepted ? "done" : ""}><b>{accepted ? <Check size={12} /> : "02"}</b>确认提交</span><ChevronRight size={14} /><span className={accepted ? "current" : ""}><b>03</b>下载珍藏</span></nav><span className="private-note"><ShieldCheck size={14} /> 填写内容仅保存在你的浏览器</span></div>
       <div className="workspace">
         <section className="form-panel" aria-labelledby="form-title"><div className="panel-heading"><div><h2 id="form-title">写下你的愿望</h2><p>每一项，都让愿望更具体一点。</p></div><span className="completion">{filled}<i>/ 5</i></span></div>
@@ -182,14 +210,16 @@ export default function Checkbook() {
             {field("author", "填写人", "Filled by", "签下你的名字", 30)}
             <p className="submit-note"><CircleHelp size={14} /><span>每次提交均扣除1次，填写错误也计入。<br />请检查后再提交。更换浏览器或清除网站数据会重新计数。</span></p>
             <button className="primary-button" type="submit" disabled={busy || loading || used === null || (!pending && (remaining === 0 || accepted))}>{busy ? "正在确认提交…" : pending ? "重试上次提交" : accepted ? <><CheckCheck size={17} /> 支票已成功生成</> : remaining === 0 ? "50次填写机会已用完" : <>提交并生成支票 <ArrowRight size={17} /></>}</button>
+            {accepted && <button type="button" className="primary-button mobile-continue" onClick={() => navigateMobile("download")}>查看并下载支票 <ArrowRight size={17} /></button>}
           </form>
           {message && <div className={`feedback ${kind}`} role={kind === "error" ? "alert" : "status"}>{message}{used === null && !loading && <button className="text-button" onClick={() => void loadStatus()}>重新读取</button>}</div>}
         </section>
         <section className="preview-panel" aria-labelledby="preview-title">
+          {mobilePage === "download" && message && <div className={`feedback mobile-result-feedback ${kind}`} role={kind === "error" ? "alert" : "status"}>{message}</div>}
           <div className="preview-heading"><div><span className="live-dot" /><h2 id="preview-title">你的专属支票</h2><span className="preview-label">实时预览</span></div><button type="button" className="icon-button" onClick={() => setZoom(true)} aria-label="放大查看支票"><ZoomIn size={17} /></button></div>
           <div className="paper-stage"><CheckPreview fields={fields} /><div className="paper-caption"><span /><Sparkles size={13} /><span>先相信，再看见</span><span /></div></div>
           <div className="download-panel"><span className={`download-icon${accepted ? " ready" : ""}`}>{accepted ? <Check size={23} /> : <FileImage size={23} strokeWidth={1.4} />}</span><div className="download-copy"><h3>{accepted ? "愿望已落笔，珍藏这一刻" : "将你的愿望，珍藏成一张图片"}</h3><p>{accepted ? "2990 × 2178 高清图片 · 重复下载不扣次数" : "填完整全部5项信息，提交成功后即可下载"}</p></div><div className="download-buttons"><button onClick={() => void exportImage("png")} disabled={!accepted || exporting}><ArrowDownToLine size={15} /> PNG</button><button onClick={() => void exportImage("jpg")} disabled={!accepted || exporting}><ArrowDownToLine size={15} /> JPG</button></div></div>
-          <div className="preview-bottom"><span>{accepted ? "已保存至当前浏览器" : "预览中的编辑尚未提交"}</span><div>{latest && !accepted && !busy && !pending && <button className="text-button" onClick={() => { setFields(latest.fields); setErrors({}); setMessage(""); }}>查看最近成功支票</button>}{accepted && remaining !== 0 && <button className="text-button" onClick={() => { setFields({ ...emptyFields }); setErrors({}); setMessage(""); }}><RotateCcw size={13} /> 再填写一张</button>}</div></div>
+          <div className="preview-bottom"><span>{accepted ? "已保存至当前浏览器" : "预览中的编辑尚未提交"}</span><div>{latest && !accepted && !busy && !pending && <button className="text-button" onClick={() => { setFields(latest.fields); setErrors({}); setMessage(""); }}>查看最近成功支票</button>}{accepted && remaining !== 0 && <button className="text-button" onClick={startNewCheck}><RotateCcw size={13} /> 再填写一张</button>}</div></div>
           <div className="gentle-note"><span>✦</span><p>愿你带着感恩与笃定，<br className="mobile-only" />走向心中丰盛的生活。</p></div>
         </section>
       </div>
